@@ -18,9 +18,9 @@
 
     <script>
         // Google Sheet එකේ Published CSV Link එක මෙතැනට දාන්න
-        const SHEET_CSV_URL = "YOUR_GOOGLE_SHEET_CSV_EXPORT_LINK_HERE";
+        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQhSGjRmtgVR6weLF4N31CQw5f0a1VPM7PJmMIzSawQt94Y-SFjgdtreNP8RhOLdwhorc5_qE1udneU/pubhtml";
         // n8n Action Webhook URL එක මෙතැනට දාන්න
-        const N8N_ACTION_WEBHOOK_URL = "YOUR_N8N_ACTION_WEBHOOK_URL_HERE";
+        const N8N_ACTION_WEBHOOK_URL = "https://peacelily.app.n8n.cloud/webhook-test/triage-message";
 
         fetch(SHEET_CSV_URL)
             .then(response => response.text())
