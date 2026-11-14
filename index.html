@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="si">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,16 +10,17 @@
 <body class="bg-gray-100 p-6">
     <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md">
         <h1 class="text-2xl font-bold mb-4 text-gray-800">🛡️ Peace Lily AI Support - Admin Approval Dashboard</h1>
-        <p class="text-gray-600 mb-6">පාරිභෝගික ඉල්ලීම් සමාලෝචනය කර AI Draft Replies අනුමත කිරීම හෝ ප්‍රතික්ෂේප කිරීම මෙখানින් සිදු කළ හැක.</p>
+        <p class="text-gray-600 mb-6">Review customer support requests, check AI-generated draft replies, and approve or reject them instantly.</p>
 
-        <div id="loading" class="text-blue-600 font-semibold">ဒත්ත පූරණය වෙමින් පවතී...</div>
+        <div id="loading" class="text-blue-600 font-semibold">Loading pending requests...</div>
         <div id="requests-container" class="space-y-6"></div>
     </div>
 
     <script>
-        // Google Sheet එකේ Published CSV Link එක මෙතැනට දාන්න
-        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQhSGjRmtgVR6weLF4N31CQw5f0a1VPM7PJmMIzSawQt94Y-SFjgdtreNP8RhOLdwhorc5_qE1udneU/pubhtml";
-        // n8n Action Webhook URL එක මෙතැනට දාන්න
+        // Google Sheet එකේ CSV Export Link එක (අවසානය pub?output=csv විය යුතුය)
+        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQhSGjRmtgVR6weLF4N31CQw5f0a1VPM7PJmMIzSawQt94Y-SFjgdtreNP8RhOLdwhorc5_qE1udneU/pub?output=csv";
+        
+        // n8n Action Webhook URL එක
         const N8N_ACTION_WEBHOOK_URL = "https://peacelily.app.n8n.cloud/webhook-test/triage-message";
 
         fetch(SHEET_CSV_URL)
@@ -27,16 +28,22 @@
             .then(csvText => {
                 Papa.parse(csvText, {
                     header: true,
+                    skipEmptyLines: true,
+                    transformHeader: function(header) {
+                        return header.trim(); // Headers වල ඇති ඕනෑම අላవශ්‍ය space එකක් ඉවත් කරයි
+                    },
                     complete: function(results) {
                         document.getElementById('loading').style.display = 'none';
                         const data = results.data;
+                        console.log("Parsed CSV Data:", data); // Browser console එකේ data පරීක්ෂා කිරීමට
+                        
                         const container = document.getElementById('requests-container');
                         
-                        // awaiting_approval status ඇති row පමණක් ෆිල්ටර් කිරීම
-                        const pendingRows = data.filter(row => row.status === 'awaiting_approval');
+                        // awaiting_approval status ඇති row පමණක් හරියටම ෆිල්ටර් කිරීම
+                        const pendingRows = data.filter(row => row.status && row.status.trim() === 'awaiting_approval');
 
                         if (pendingRows.length === 0) {
-                            container.innerHTML = `<div class="p-4 bg-green-100 text-green-700 rounded-md">🎉 දැනට අනුමත කිරීමට කිසිදු ඉල්ලීමක් නොමැත!</div>`;
+                            container.innerHTML = `<div class="p-4 bg-green-100 text-green-700 rounded-md">🎉 No pending requests to review! All caught up.</div>`;
                             return;
                         }
 
@@ -54,7 +61,7 @@
                                 <div class="bg-white p-3 rounded border mb-2 text-sm text-gray-700"><strong>Summary:</strong> ${row['Summary']}</div>
                                 <div class="bg-blue-50 p-3 rounded border border-blue-200 mb-4 text-sm text-blue-900"><strong>AI Draft Reply:</strong><br>${row['Draft Reply']}</div>
                                 <div class="flex space-x-4">
-                                    <button onclick="sendAction('${row['Message ID']}', '${row['Customer Email']}', '${row.Draft_Reply || row['Draft Reply']}', 'approved')" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700">✅ Approve & Send Email</button>
+                                    <button onclick="sendAction('${row['Message ID']}', '${row['Customer Email']}', '${row['Draft Reply']}', 'approved')" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700">✅ Approve & Send Email</button>
                                     <button onclick="sendAction('${row['Message ID']}', '', '', 'rejected')" class="bg-red-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-red-700">❌ Reject</button>
                                 </div>
                             `;
@@ -62,6 +69,9 @@
                         });
                     }
                 });
+            })
+            .catch(err => {
+                document.getElementById('loading').innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-md">Error loading data: ${err}</div>`;
             });
 
         function sendAction(messageId, email, reply, actionType) {
