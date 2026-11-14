@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peace Lily Support - Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-4 text-gray-800">🛡️ Peace Lily AI Support - Admin Approval Dashboard</h1>
+        <p class="text-gray-600 mb-6">පාරිභෝගික ඉල්ලීම් සමාලෝචනය කර AI Draft Replies අනුමත කිරීම හෝ ප්‍රතික්ෂේප කිරීම මෙখানින් සිදු කළ හැක.</p>
+
+        <div id="loading" class="text-blue-600 font-semibold">ဒත්ත පූරණය වෙමින් පවතී...</div>
+        <div id="requests-container" class="space-y-6"></div>
+    </div>
+
+    <script>
+        // Google Sheet එකේ Published CSV Link එක මෙතැනට දාන්න
+        const SHEET_CSV_URL = "YOUR_GOOGLE_SHEET_CSV_EXPORT_LINK_HERE";
+        // n8n Action Webhook URL එක මෙතැනට දාන්න
+        const N8N_ACTION_WEBHOOK_URL = "YOUR_N8N_ACTION_WEBHOOK_URL_HERE";
+
+        fetch(SHEET_CSV_URL)
+            .then(response => response.text())
+            .then(csvText => {
+                Papa.parse(csvText, {
+                    header: true,
+                    complete: function(results) {
+                        document.getElementById('loading').style.display = 'none';
+                        const data = results.data;
+                        const container = document.getElementById('requests-container');
+                        
+                        // awaiting_approval status ඇති row පමණක් ෆිල්ටර් කිරීම
+                        const pendingRows = data.filter(row => row.status === 'awaiting_approval');
+
+                        if (pendingRows.length === 0) {
+                            container.innerHTML = `<div class="p-4 bg-green-100 text-green-700 rounded-md">🎉 දැනට අනුමත කිරීමට කිසිදු ඉල්ලීමක් නොමැත!</div>`;
+                            return;
+                        }
+
+                        pendingRows.forEach(row => {
+                            if (!row['Order Number']) return;
+                            
+                            const card = document.createElement('div');
+                            card.className = "border border-gray-200 p-4 rounded-lg bg-gray-50 shadow-sm";
+                            card.innerHTML = `
+                                <div class="flex justify-between items-center mb-2">
+                                    <h3 class="text-lg font-bold text-gray-700">📦 Order ID: ${row['Order Number']} | Customer: ${row['Customer Name']}</h3>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded">Urgency: ${row['Urgency']}</span>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-2"><strong>Email:</strong> ${row['Customer Email']} | <strong>Category:</strong> ${row['Category']}</p>
+                                <div class="bg-white p-3 rounded border mb-2 text-sm text-gray-700"><strong>Summary:</strong> ${row['Summary']}</div>
+                                <div class="bg-blue-50 p-3 rounded border border-blue-200 mb-4 text-sm text-blue-900"><strong>AI Draft Reply:</strong><br>${row['Draft Reply']}</div>
+                                <div class="flex space-x-4">
+                                    <button onclick="sendAction('${row['Message ID']}', '${row['Customer Email']}', '${row.Draft_Reply || row['Draft Reply']}', 'approved')" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700">✅ Approve & Send Email</button>
+                                    <button onclick="sendAction('${row['Message ID']}', '', '', 'rejected')" class="bg-red-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-red-700">❌ Reject</button>
+                                </div>
+                            `;
+                            container.appendChild(card);
+                        });
+                    }
+                });
+            });
+
+        function sendAction(messageId, email, reply, actionType) {
+            const payload = {
+                message_id: messageId,
+                customer_email: email,
+                draft_reply: reply,
+                action: actionType,
+                approver_name: "Manoj Aberathna"
+            };
+
+            fetch(N8N_ACTION_WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => {
+                if(res.ok) {
+                    alert(`Action (${actionType}) successfully sent!`);
+                    location.reload();
+                } else {
+                    alert('Webhook trigger failed.');
+                }
+            })
+            .catch(err => alert('Error: ' + err));
+        }
+    </script>
+</body>
+</html>
