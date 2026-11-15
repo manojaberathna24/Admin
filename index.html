@@ -159,7 +159,7 @@
 
         let allRowsData = [];
         let currentActiveTab = 'pending';
-        let processedMessageIds = []; // Local memory to instantly hide processed cards despite sheet cache lag
+        let processedMessageIds = []; // Local memory to instantly hide processed cards
 
         function fetchSheetData() {
             fetch(SHEET_CSV_URL + '&cacheBust=' + new Date().getTime())
@@ -184,9 +184,13 @@
         }
 
         function updateDashboardCounts() {
-            const pending = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'awaiting_approval' && !processedMessageIds.includes(r['Message ID'])).length;
-            const approved = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'approved').length;
-            const rejected = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'rejected').length;
+            const pending = allRowsData.filter(r => {
+                const status = (r.status || '').trim().toLowerCase();
+                return (status === 'awaiting_approval' || status === '') && !processedMessageIds.includes(r['Message ID']);
+            }).length;
+
+            const approved = allRowsData.filter(r => (r.status || '').trim().toLowerCase() === 'approved').length;
+            const rejected = allRowsData.filter(r => (r.status || '').trim().toLowerCase() === 'rejected').length;
 
             document.getElementById('stat-pending').innerText = pending;
             document.getElementById('stat-approved').innerText = approved;
@@ -215,17 +219,21 @@
 
             let filtered = [];
             if (currentActiveTab === 'pending') {
-                filtered = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'awaiting_approval' && !processedMessageIds.includes(r['Message ID']));
+                filtered = allRowsData.filter(r => {
+                    const status = (r.status || '').trim().toLowerCase();
+                    // Strict check: only show items that are truly awaiting approval and NOT in local processed memory
+                    return (status === 'awaiting_approval' || status === '') && !processedMessageIds.includes(r['Message ID']);
+                });
             } else if (currentActiveTab === 'approved') {
-                filtered = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'approved');
+                filtered = allRowsData.filter(r => (r.status || '').trim().toLowerCase() === 'approved');
             } else if (currentActiveTab === 'rejected') {
-                filtered = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'rejected');
+                filtered = allRowsData.filter(r => (r.status || '').trim().toLowerCase() === 'rejected');
             }
 
-            // Sentiment Filtering
+            // Sentiment Filtering (handles blank sentiments gracefully)
             if (sentimentFilter !== 'all') {
                 filtered = filtered.filter(r => {
-                    const sent = (r['sentiment'] || '').trim().toLowerCase();
+                    let sent = (r['sentiment'] || 'neutral').trim().toLowerCase();
                     return sent === sentimentFilter;
                 });
             }
@@ -253,7 +261,7 @@
                 const messageId = row['Message ID'] || '';
                 const customerEmail = row['Customer Email'] || '';
                 const draftReply = row['Draft Reply'] || '';
-                const status = row['status'] ? row['status'].trim().toLowerCase() : '';
+                const status = row['status'] ? row['status'].trim().toLowerCase() : 'awaiting_approval';
                 
                 // Sentiment Badge styling
                 const sentiment = (row['sentiment'] || 'neutral').toUpperCase();
@@ -266,7 +274,7 @@
                 if(status === 'rejected') badgeColor = 'bg-rose-50 text-rose-800 border-rose-200';
 
                 let actionSection = '';
-                if(status === 'awaiting_approval') {
+                if(status === 'awaiting_approval' || status === '') {
                     actionSection = `
                         <div class="mt-5 pt-4 border-t border-gray-100 flex space-x-3">
                             <button class="approve-btn bg-emerald-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 shadow-sm transition-all-custom flex items-center space-x-2 transform active:scale-95">
@@ -291,7 +299,7 @@
                         <h3 class="text-base font-extrabold text-gray-800 flex items-center">
                             <i class="fa-solid fa-box text-emerald-600 mr-2"></i> Order ID: <span class="text-emerald-700 ml-1">${row['Order Number']}</span> <span class="text-gray-400 mx-2">|</span> Customer: ${row['Customer Name']}
                         </h3>
-                        <span class="px-3 py-1 text-xs font-bold rounded-full border ${badgeColor}">${status.toUpperCase()}</span>
+                        <span class="px-3 py-1 text-xs font-bold rounded-full border ${badgeColor}">${status ? status.toUpperCase() : 'AWAITING_APPROVAL'}</span>
                     </div>
                     <p class="text-xs text-gray-500 mb-3 font-medium">
                         <strong>Email:</strong> ${customerEmail} <span class="text-gray-300 mx-1">|</span> 
@@ -304,7 +312,7 @@
                     ${actionSection}
                 `;
 
-                if(status === 'awaiting_approval') {
+                if(status === 'awaiting_approval' || status === '') {
                     const approveBtn = card.querySelector('.approve-btn');
                     approveBtn.addEventListener('click', () => {
                         const selectedApprover = document.getElementById('global-approver').value;
@@ -373,7 +381,9 @@
             })
             .then(res => {
                 if(res.ok) {
-                    processedMessageIds.push(messageId); // Immediately hide from pending list locally
+                    if (!processedMessageIds.includes(messageId)) {
+                        processedMessageIds.push(messageId); // Instantly hide from pending list locally
+                    }
                     alert(`Action (${actionType}) successfully recorded, email dispatched & sheet synchronized!`);
                     fetchSheetData(); 
                 } else {
