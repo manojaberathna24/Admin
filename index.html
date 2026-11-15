@@ -58,19 +58,48 @@
                             
                             const card = document.createElement('div');
                             card.className = "border border-gray-200 p-6 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200";
+                            
+                            const messageId = row['Message ID'] || '';
+                            const customerEmail = row['Customer Email'] || '';
+                            const draftReply = row['Draft Reply'] || '';
+
                             card.innerHTML = `
                                 <div class="flex justify-between items-center mb-3">
                                     <h3 class="text-base font-bold text-gray-800">📦 Order ID: <span class="text-blue-600">${row['Order Number']}</span> | Customer: ${row['Customer Name']}</h3>
                                     <span class="px-3 py-1 bg-amber-50 text-amber-800 text-xs font-bold rounded-full border border-amber-200">Urgency: ${row['Urgency']}</span>
                                 </div>
-                                <p class="text-xs text-gray-500 mb-3"><strong>Email:</strong> ${row['Customer Email']} | <strong>Category:</strong> ${row['Category']} | <strong>Message ID:</strong> ${row['Message ID']}</p>
+                                <p class="text-xs text-gray-500 mb-3"><strong>Email:</strong> ${customerEmail} | <strong>Category:</strong> ${row['Category']} | <strong>Message ID:</strong> ${messageId}</p>
                                 <div class="bg-gray-50 p-3.5 rounded-lg border border-gray-100 mb-3 text-sm text-gray-700"><strong>Summary:</strong> ${row['Summary']}</div>
-                                <div class="bg-blue-50/60 p-3.5 rounded-lg border border-blue-100 mb-5 text-sm text-blue-900"><strong>AI Draft Reply:</strong><br>${row['Draft Reply']}</div>
+                                <div class="bg-blue-50/60 p-3.5 rounded-lg border border-blue-100 mb-4 text-sm text-blue-900"><strong>AI Draft Reply:</strong><br>${draftReply}</div>
+                                
+                                <div class="mb-4 flex items-center space-x-3">
+                                    <label class="text-xs font-semibold text-gray-700">Approver Name:</label>
+                                    <select class="approver-select border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                        <option value="Manoj Aberathna">Manoj Aberathna</option>
+                                        <option value="Admin Support">Admin Support Lead</option>
+                                        <option value="Peace Lily Bot">Peace Lily System Bot</option>
+                                    </select>
+                                </div>
+
                                 <div class="flex space-x-3">
-                                    <button onclick="sendAction('${row['Message ID']}', '${row['Customer Email']}', '${row['Draft Reply']}', 'approved')" class="bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 shadow-sm transition-colors flex items-center space-x-2"><span>✅ Approve & Send</span></button>
-                                    <button onclick="sendAction('${row['Message ID']}', '', '', 'rejected')" class="bg-rose-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-rose-700 shadow-sm transition-colors flex items-center space-x-2"><span>❌ Reject</span></button>
+                                    <button class="approve-btn bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 shadow-sm transition-colors flex items-center space-x-2"><span>✅ Approve & Send</span></button>
+                                    <button class="reject-btn bg-rose-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-rose-700 shadow-sm transition-colors flex items-center space-x-2"><span>❌ Reject</span></button>
                                 </div>
                             `;
+
+                            const approverSelect = card.querySelector('.approver-select');
+                            const approveBtn = card.querySelector('.approve-btn');
+                            approveBtn.addEventListener('click', () => {
+                                const selectedApprover = approverSelect.value;
+                                sendAction(messageId, customerEmail, draftReply, 'approved', selectedApprover);
+                            });
+
+                            const rejectBtn = card.querySelector('.reject-btn');
+                            rejectBtn.addEventListener('click', () => {
+                                const selectedApprover = approverSelect.value;
+                                sendAction(messageId, '', '', 'rejected', selectedApprover);
+                            });
+
                             container.appendChild(card);
                         });
                     }
@@ -80,7 +109,7 @@
                 document.getElementById('loading').innerHTML = `<div class="p-4 bg-rose-50 text-rose-700 rounded-xl border border-rose-200">Error loading data: ${err}</div>`;
             });
 
-        function sendAction(messageId, email, reply, actionType) {
+        function sendAction(messageId, email, reply, actionType, approverName) {
             const now = new Date();
             const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
             const timeStr = now.toTimeString().split(' ')[0]; // HH:MM:SS
@@ -92,7 +121,7 @@
                 action: actionType,
                 action_date: dateStr,
                 action_time: timeStr,
-                approver_name: "Manoj Aberathna"
+                approver_name: approverName
             };
 
             fetch(N8N_ACTION_WEBHOOK_URL, {
