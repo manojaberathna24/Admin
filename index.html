@@ -162,7 +162,7 @@
         let processedMessageIds = []; // Local memory to instantly hide processed cards
 
         function fetchSheetData() {
-            fetch(SHEET_CSV_URL + '&cacheBust=' + new Date().getTime())
+            fetch(SHEET_CSV_URL + '&cb=' + new Date().getTime(), { cache: 'no-store' })
                 .then(response => response.text())
                 .then(csvText => {
                     Papa.parse(csvText, {
@@ -171,7 +171,25 @@
                         transformHeader: h => h.trim(),
                         complete: function(results) {
                             document.getElementById('loading').style.display = 'none';
-                            allRowsData = results.data;
+                            
+                            // Normalize keys and sentiments to handle case differences & blank values robustly
+                            allRowsData = results.data.map(row => {
+                                const normalized = {};
+                                Object.keys(row).forEach(key => {
+                                    const cleanKey = key.trim();
+                                    normalized[cleanKey] = row[key];
+                                    if(cleanKey.toLowerCase() === 'sentiment') {
+                                        normalized['sentiment'] = row[key] ? row[key].trim().toLowerCase() : 'neutral';
+                                    }
+                                    if(cleanKey.toLowerCase() === 'status') {
+                                        normalized['status'] = row[key] ? row[key].trim().toLowerCase() : 'awaiting_approval';
+                                    }
+                                });
+                                if(!normalized['sentiment']) normalized['sentiment'] = 'neutral';
+                                if(!normalized['status']) normalized['status'] = 'awaiting_approval';
+                                return normalized;
+                            });
+
                             updateDashboardCounts();
                             renderCurrentTab();
                             renderRecentActivity();
@@ -215,13 +233,12 @@
             container.innerHTML = '';
 
             const searchQuery = document.getElementById('search-box').value.toLowerCase();
-            const sentimentFilter = document.getElementById('sentiment-filter').value;
+            const sentimentFilter = document.getElementById('sentiment-filter').value.toLowerCase();
 
             let filtered = [];
             if (currentActiveTab === 'pending') {
                 filtered = allRowsData.filter(r => {
                     const status = (r.status || '').trim().toLowerCase();
-                    // Strict check: only show items that are truly awaiting approval and NOT in local processed memory
                     return (status === 'awaiting_approval' || status === '') && !processedMessageIds.includes(r['Message ID']);
                 });
             } else if (currentActiveTab === 'approved') {
@@ -230,7 +247,7 @@
                 filtered = allRowsData.filter(r => (r.status || '').trim().toLowerCase() === 'rejected');
             }
 
-            // Sentiment Filtering (handles blank sentiments gracefully)
+            // Sentiment Filtering
             if (sentimentFilter !== 'all') {
                 filtered = filtered.filter(r => {
                     let sent = (r['sentiment'] || 'neutral').trim().toLowerCase();
@@ -264,10 +281,10 @@
                 const status = row['status'] ? row['status'].trim().toLowerCase() : 'awaiting_approval';
                 
                 // Sentiment Badge styling
-                const sentiment = (row['sentiment'] || 'neutral').toUpperCase();
+                const sentimentVal = (row['sentiment'] || 'neutral').toUpperCase();
                 let sentimentColor = 'bg-blue-50 text-blue-700 border-blue-200';
-                if(sentiment === 'POSITIVE') sentimentColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                if(sentiment === 'NEGATIVE') sentimentColor = 'bg-rose-50 text-rose-700 border-rose-200';
+                if(sentimentVal === 'POSITIVE') sentimentColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                if(sentimentVal === 'NEGATIVE') sentimentColor = 'bg-rose-50 text-rose-700 border-rose-200';
 
                 let badgeColor = 'bg-amber-50 text-amber-800 border-amber-200';
                 if(status === 'approved') badgeColor = 'bg-emerald-50 text-emerald-800 border-emerald-200';
@@ -305,7 +322,7 @@
                         <strong>Email:</strong> ${customerEmail} <span class="text-gray-300 mx-1">|</span> 
                         <strong>Category:</strong> ${row['Category']} <span class="text-gray-300 mx-1">|</span> 
                         <strong>Urgency:</strong> <span class="uppercase">${row['Urgency'] || 'Low'}</span> <span class="text-gray-300 mx-1">|</span> 
-                        <strong>Sentiment:</strong> <span class="px-2 py-0.5 text-[10px] font-bold rounded-md border ${sentimentColor}">${sentiment}</span>
+                        <strong>Sentiment:</strong> <span class="px-2 py-0.5 text-[10px] font-bold rounded-md border ${sentimentColor}">${sentimentVal}</span>
                     </p>
                     <div class="bg-gray-50/80 p-3.5 rounded-xl border border-gray-100 mb-3 text-sm text-gray-700"><strong>Summary:</strong> ${row['Summary']}</div>
                     <div class="bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-100/60 text-sm text-emerald-950"><strong>AI Draft Reply:</strong><br>${draftReply}</div>
@@ -382,7 +399,7 @@
             .then(res => {
                 if(res.ok) {
                     if (!processedMessageIds.includes(messageId)) {
-                        processedMessageIds.push(messageId); // Instantly hide from pending list locally
+                        processedMessageIds.push(messageId); // Instantly hide locally
                     }
                     alert(`Action (${actionType}) successfully recorded, email dispatched & sheet synchronized!`);
                     fetchSheetData(); 
@@ -394,7 +411,8 @@
         }
 
         fetchSheetData();
-        setInterval(fetchSheetData, 15000);
+        // Auto poll every 6 seconds for smooth near real-time sync
+        setInterval(fetchSheetData, 6000);
     </script>
 </body>
 </html>
