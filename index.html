@@ -147,6 +147,7 @@
 
         let allRowsData = [];
         let currentActiveTab = 'pending';
+        let processedMessageIds = []; // Local memory to instantly hide processed cards despite sheet cache lag
 
         function fetchSheetData() {
             fetch(SHEET_CSV_URL + '&cacheBust=' + new Date().getTime())
@@ -171,9 +172,9 @@
         }
 
         function updateDashboardCounts() {
-            const pending = allRowsData.filter(r => r.status && r.status.trim() === 'awaiting_approval').length;
-            const approved = allRowsData.filter(r => r.status && r.status.trim() === 'approved').length;
-            const rejected = allRowsData.filter(r => r.status && r.status.trim() === 'rejected').length;
+            const pending = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'awaiting_approval' && !processedMessageIds.includes(r['Message ID'])).length;
+            const approved = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'approved').length;
+            const rejected = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'rejected').length;
 
             document.getElementById('stat-pending').innerText = pending;
             document.getElementById('stat-approved').innerText = approved;
@@ -201,11 +202,11 @@
 
             let filtered = [];
             if (currentActiveTab === 'pending') {
-                filtered = allRowsData.filter(r => r.status && r.status.trim() === 'awaiting_approval');
+                filtered = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'awaiting_approval' && !processedMessageIds.includes(r['Message ID']));
             } else if (currentActiveTab === 'approved') {
-                filtered = allRowsData.filter(r => r.status && r.status.trim() === 'approved');
+                filtered = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'approved');
             } else if (currentActiveTab === 'rejected') {
-                filtered = allRowsData.filter(r => r.status && r.status.trim() === 'rejected');
+                filtered = allRowsData.filter(r => r.status && r.status.trim().toLowerCase() === 'rejected');
             }
 
             if (searchQuery.trim() !== '') {
@@ -219,7 +220,7 @@
             }
 
             if (filtered.length === 0) {
-                container.innerHTML = `<div class="p-10 glass-card rounded-2xl shadow-sm border border-emerald-100 text-center text-gray-500 font-medium">🎉 No records found matching your criteria.</div>`;
+                container.innerHTML = `<div class="p-10 glass-card rounded-2xl shadow-sm border border-emerald-100 text-center text-gray-500 font-medium">🎉 No records found in ${currentActiveTab} category.</div>`;
                 return;
             }
 
@@ -231,7 +232,7 @@
                 const messageId = row['Message ID'] || '';
                 const customerEmail = row['Customer Email'] || '';
                 const draftReply = row['Draft Reply'] || '';
-                const status = row['status'] ? row['status'].trim() : '';
+                const status = row['status'] ? row['status'].trim().toLowerCase() : '';
 
                 let badgeColor = 'bg-amber-50 text-amber-800 border-amber-200';
                 if(status === 'approved') badgeColor = 'bg-emerald-50 text-emerald-800 border-emerald-200';
@@ -293,7 +294,7 @@
             const tbody = document.getElementById('recent-activity-body');
             tbody.innerHTML = '';
 
-            const completed = allRowsData.filter(r => r.status && (r.status.trim() === 'approved' || r.status.trim() === 'rejected'));
+            const completed = allRowsData.filter(r => r.status && (r.status.trim().toLowerCase() === 'approved' || r.status.trim().toLowerCase() === 'rejected'));
             const last5 = completed.reverse().slice(0, 5);
 
             if(last5.length === 0) {
@@ -302,7 +303,7 @@
             }
 
             last5.forEach(row => {
-                const status = row['status'].trim();
+                const status = row['status'].trim().toLowerCase();
                 const badge = status === 'approved' ? '<span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-md">APPROVED</span>' : '<span class="px-2.5 py-1 bg-rose-100 text-rose-800 text-[10px] font-extrabold rounded-md">REJECTED</span>';
                 
                 const tr = document.createElement('tr');
@@ -340,6 +341,7 @@
             })
             .then(res => {
                 if(res.ok) {
+                    processedMessageIds.push(messageId); // Immediately hide from pending list locally
                     alert(`Action (${actionType}) successfully recorded, email dispatched & sheet synchronized!`);
                     fetchSheetData(); 
                 } else {
