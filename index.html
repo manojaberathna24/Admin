@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Peace Lily AI Support - Command Center</title>
-    <script src="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.js"></script>
+    <!-- Modern Tailwind Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -207,7 +208,6 @@
                 filtered = allRowsData.filter(r => r.status && r.status.trim() === 'rejected');
             }
 
-            // Apply Search Filtering across Name, Order ID, Message ID, or Email
             if (searchQuery.trim() !== '') {
                 filtered = filtered.filter(r => {
                     const name = (r['Customer Name'] || '').toLowerCase();
@@ -349,7 +349,6 @@
             .catch(err => alert('Error: ' + err));
         }
 
-        // Initial Load & Auto-refresh every 15 seconds
         fetchSheetData();
         setInterval(fetchSheetData, 15000);
     </script>
