@@ -7,20 +7,29 @@
     <script src="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
 </head>
-<body class="bg-gray-100 p-6">
-    <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h1 class="text-2xl font-bold mb-4 text-gray-800">🛡️ Peace Lily AI Support - Admin Approval Dashboard</h1>
-        <p class="text-gray-600 mb-6">Review customer support requests, check AI-generated draft replies, and approve or reject them instantly.</p>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen p-6">
+    <div class="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100">
+        <div class="flex items-center justify-between mb-6 border-b pb-4">
+            <div>
+                <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">🛡️ Peace Lily AI Support</h1>
+                <p class="text-sm text-gray-500 mt-1">Admin Approval & Triage Command Center</p>
+            </div>
+            <span class="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full border border-blue-200">Live Sync Active</span>
+        </div>
 
-        <div id="loading" class="text-blue-600 font-semibold">Loading pending requests...</div>
+        <div id="loading" class="flex items-center space-x-3 text-blue-600 font-semibold p-4 bg-blue-50 rounded-lg">
+            <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            <span>Loading pending customer requests...</span>
+        </div>
+        
         <div id="requests-container" class="space-y-6"></div>
     </div>
 
     <script>
-        // Google Sheet එකේ CSV Export Link එක (අවසානය pub?output=csv විය යුතුය)
         const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQhSGjRmtgVR6weLF4N31CQw5f0a1VPM7PJmMIzSawQt94Y-SFjgdtreNP8RhOLdwhorc5_qE1udneU/pub?gid=0&single=true&output=csv";
-        
-        // n8n Action Webhook URL එක
         const N8N_ACTION_WEBHOOK_URL = "https://peacelily.app.n8n.cloud/webhook/triage-message";
 
         fetch(SHEET_CSV_URL)
@@ -30,20 +39,17 @@
                     header: true,
                     skipEmptyLines: true,
                     transformHeader: function(header) {
-                        return header.trim(); // Headers වල ඇති ඕනෑම අላవශ්‍ය space එකක් ඉවත් කරයි
+                        return header.trim();
                     },
                     complete: function(results) {
                         document.getElementById('loading').style.display = 'none';
                         const data = results.data;
-                        console.log("Parsed CSV Data:", data); // Browser console එකේ data පරීක්ෂා කිරීමට
-                        
                         const container = document.getElementById('requests-container');
                         
-                        // awaiting_approval status ඇති row පමණක් හරියටම ෆිල්ටර් කිරීම
                         const pendingRows = data.filter(row => row.status && row.status.trim() === 'awaiting_approval');
 
                         if (pendingRows.length === 0) {
-                            container.innerHTML = `<div class="p-4 bg-green-100 text-green-700 rounded-md">🎉 No pending requests to review! All caught up.</div>`;
+                            container.innerHTML = `<div class="p-6 bg-green-50 text-green-700 rounded-xl border border-green-200 font-medium text-center">🎉 No pending requests to review! All caught up.</div>`;
                             return;
                         }
 
@@ -51,18 +57,18 @@
                             if (!row['Order Number']) return;
                             
                             const card = document.createElement('div');
-                            card.className = "border border-gray-200 p-4 rounded-lg bg-gray-50 shadow-sm";
+                            card.className = "border border-gray-200 p-6 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200";
                             card.innerHTML = `
-                                <div class="flex justify-between items-center mb-2">
-                                    <h3 class="text-lg font-bold text-gray-700">📦 Order ID: ${row['Order Number']} | Customer: ${row['Customer Name']}</h3>
-                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded">Urgency: ${row['Urgency']}</span>
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="text-base font-bold text-gray-800">📦 Order ID: <span class="text-blue-600">${row['Order Number']}</span> | Customer: ${row['Customer Name']}</h3>
+                                    <span class="px-3 py-1 bg-amber-50 text-amber-800 text-xs font-bold rounded-full border border-amber-200">Urgency: ${row['Urgency']}</span>
                                 </div>
-                                <p class="text-sm text-gray-600 mb-2"><strong>Email:</strong> ${row['Customer Email']} | <strong>Category:</strong> ${row['Category']}</p>
-                                <div class="bg-white p-3 rounded border mb-2 text-sm text-gray-700"><strong>Summary:</strong> ${row['Summary']}</div>
-                                <div class="bg-blue-50 p-3 rounded border border-blue-200 mb-4 text-sm text-blue-900"><strong>AI Draft Reply:</strong><br>${row['Draft Reply']}</div>
-                                <div class="flex space-x-4">
-                                    <button onclick="sendAction('${row['Message ID']}', '${row['Customer Email']}', '${row['Draft Reply']}', 'approved')" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700">✅ Approve & Send Email</button>
-                                    <button onclick="sendAction('${row['Message ID']}', '', '', 'rejected')" class="bg-red-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-red-700">❌ Reject</button>
+                                <p class="text-xs text-gray-500 mb-3"><strong>Email:</strong> ${row['Customer Email']} | <strong>Category:</strong> ${row['Category']} | <strong>Message ID:</strong> ${row['Message ID']}</p>
+                                <div class="bg-gray-50 p-3.5 rounded-lg border border-gray-100 mb-3 text-sm text-gray-700"><strong>Summary:</strong> ${row['Summary']}</div>
+                                <div class="bg-blue-50/60 p-3.5 rounded-lg border border-blue-100 mb-5 text-sm text-blue-900"><strong>AI Draft Reply:</strong><br>${row['Draft Reply']}</div>
+                                <div class="flex space-x-3">
+                                    <button onclick="sendAction('${row['Message ID']}', '${row['Customer Email']}', '${row['Draft Reply']}', 'approved')" class="bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 shadow-sm transition-colors flex items-center space-x-2"><span>✅ Approve & Send</span></button>
+                                    <button onclick="sendAction('${row['Message ID']}', '', '', 'rejected')" class="bg-rose-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-rose-700 shadow-sm transition-colors flex items-center space-x-2"><span>❌ Reject</span></button>
                                 </div>
                             `;
                             container.appendChild(card);
@@ -71,15 +77,21 @@
                 });
             })
             .catch(err => {
-                document.getElementById('loading').innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded-md">Error loading data: ${err}</div>`;
+                document.getElementById('loading').innerHTML = `<div class="p-4 bg-rose-50 text-rose-700 rounded-xl border border-rose-200">Error loading data: ${err}</div>`;
             });
 
         function sendAction(messageId, email, reply, actionType) {
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+            const timeStr = now.toTimeString().split(' ')[0]; // HH:MM:SS
+
             const payload = {
                 message_id: messageId,
                 customer_email: email,
                 draft_reply: reply,
                 action: actionType,
+                action_date: dateStr,
+                action_time: timeStr,
                 approver_name: "Manoj Aberathna"
             };
 
@@ -90,7 +102,7 @@
             })
             .then(res => {
                 if(res.ok) {
-                    alert(`Action (${actionType}) successfully sent!`);
+                    alert(`Action (${actionType}) successfully recorded!`);
                     location.reload();
                 } else {
                     alert('Webhook trigger failed.');
