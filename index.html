@@ -3,116 +3,325 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Peace Lily Support - Admin Dashboard</title>
+    <title>Peace Lily AI Support - Command Center</title>
     <script src="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .transition-all-custom { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen p-6">
-    <div class="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-        <div class="flex items-center justify-between mb-6 border-b pb-4">
-            <div>
-                <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">🛡️ Peace Lily AI Support</h1>
-                <p class="text-sm text-gray-500 mt-1">Admin Approval & Triage Command Center</p>
+<body class="bg-gradient-to-br from-emerald-50 via-slate-50 to-blue-50 min-h-screen text-gray-800">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white/80 backdrop-blur-md shadow-sm border-b border-emerald-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-11 h-11 bg-gradient-to-tr from-emerald-600 to-teal-500 text-white rounded-2xl flex items-center justify-center font-bold text-lg shadow-md shadow-emerald-200">
+                    <i class="fa-solid fa-seedling"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold text-gray-900 tracking-tight flex items-center">
+                        Peace Lily <span class="ml-2 text-xs px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-semibold">AI Support</span>
+                    </h1>
+                    <p class="text-xs text-gray-500">Autonomous Triage & Approval Hub</p>
+                </div>
             </div>
-            <span class="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full border border-blue-200">Live Sync Active</span>
+
+            <div class="flex items-center space-x-4">
+                <!-- Notification Bell -->
+                <div class="relative">
+                    <button class="w-10 h-10 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all-custom relative shadow-sm">
+                        <i class="fa-solid fa-bell"></i>
+                        <span id="notif-badge" class="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm animate-pulse">0</span>
+                    </button>
+                </div>
+
+                <!-- Admin Profile Selector -->
+                <div class="flex items-center space-x-2 bg-white border border-gray-200 rounded-xl px-3.5 py-2 shadow-sm hover:border-emerald-300 transition-all-custom">
+                    <div class="w-7 h-7 bg-emerald-100 text-emerald-700 rounded-lg flex items-center justify-center font-bold text-xs">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                    <select id="global-approver" class="bg-transparent text-sm font-semibold text-gray-700 outline-none cursor-pointer">
+                        <option value="Manoj Aberathna">Manoj Aberathna (Lead AI)</option>
+                        <option value="Admin Support Lead">Admin Support Lead</option>
+                        <option value="QA Lead">QA Lead</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        
+        <!-- Stats Row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="glass-card p-6 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between transition-all-custom hover:-translate-y-1 hover:shadow-md">
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Pending Review</p>
+                    <h3 id="stat-pending" class="text-3xl font-extrabold text-amber-600 mt-1">0</h3>
+                </div>
+                <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-xl shadow-inner"><i class="fa-solid fa-clock-rotate-left"></i></div>
+            </div>
+            <div class="glass-card p-6 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between transition-all-custom hover:-translate-y-1 hover:shadow-md">
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Approved & Sent</p>
+                    <h3 id="stat-approved" class="text-3xl font-extrabold text-emerald-600 mt-1">0</h3>
+                </div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-xl shadow-inner"><i class="fa-solid fa-circle-check"></i></div>
+            </div>
+            <div class="glass-card p-6 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between transition-all-custom hover:-translate-y-1 hover:shadow-md">
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Rejected Requests</p>
+                    <h3 id="stat-rejected" class="text-3xl font-extrabold text-rose-600 mt-1">0</h3>
+                </div>
+                <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center text-xl shadow-inner"><i class="fa-solid fa-ban"></i></div>
+            </div>
         </div>
 
-        <div id="loading" class="flex items-center space-x-3 text-blue-600 font-semibold p-4 bg-blue-50 rounded-lg">
-            <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <!-- Search Bar & Tabs Header -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b border-gray-200 pb-4">
+            <!-- Tabs Navigation -->
+            <div class="flex space-x-3">
+                <button onclick="switchTab('pending')" id="tab-pending" class="tab-btn px-5 py-2.5 font-bold text-sm rounded-xl bg-emerald-600 text-white transition-all-custom flex items-center space-x-2 shadow-sm">
+                    <i class="fa-solid fa-inbox"></i><span>Pending Approvals</span>
+                </button>
+                <button onclick="switchTab('approved')" id="tab-approved" class="tab-btn px-5 py-2.5 font-bold text-sm rounded-xl bg-gray-200 text-gray-600 hover:bg-gray-300 transition-all-custom flex items-center space-x-2">
+                    <i class="fa-solid fa-check-double"></i><span>Approved History</span>
+                </button>
+                <button onclick="switchTab('rejected')" id="tab-rejected" class="tab-btn px-5 py-2.5 font-bold text-sm rounded-xl bg-gray-200 text-gray-600 hover:bg-gray-300 transition-all-custom flex items-center space-x-2">
+                    <i class="fa-solid fa-rectangle-xmark"></i><span>Rejected History</span>
+                </button>
+            </div>
+
+            <!-- Search Input Box -->
+            <div class="relative w-full md:w-72">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fa-solid fa-search"></i></span>
+                <input type="text" id="search-box" oninput="renderCurrentTab()" placeholder="Search by name, ID, order..." class="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm">
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="flex items-center space-x-3 text-emerald-700 font-semibold p-6 glass-card rounded-2xl shadow-sm border border-emerald-100">
+            <svg class="animate-spin h-5 w-5 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
             </svg>
-            <span>Loading pending customer requests...</span>
+            <span>Synchronizing live data securely from Google Sheets...</span>
         </div>
-        
+
+        <!-- Main Content Cards Area -->
         <div id="requests-container" class="space-y-6"></div>
-    </div>
+
+        <!-- Recent Activity Log (Last 5 Completed) -->
+        <div class="mt-12 glass-card rounded-2xl shadow-sm border border-emerald-100 p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                <i class="fa-solid fa-timeline mr-2 text-emerald-600"></i> Recent Completed Actions (Last 5)
+            </h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-emerald-50/50 text-emerald-900 uppercase text-xs font-semibold">
+                        <tr>
+                            <th class="p-3.5 rounded-l-xl">Order ID</th>
+                            <th class="p-3.5">Customer</th>
+                            <th class="p-3.5">Status</th>
+                            <th class="p-3.5">Action Date & Time</th>
+                            <th class="p-3.5 rounded-r-xl">Approved By</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-activity-body" class="divide-y divide-gray-100">
+                        <!-- Populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
 
     <script>
         const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQhSGjRmtgVR6weLF4N31CQw5f0a1VPM7PJmMIzSawQt94Y-SFjgdtreNP8RhOLdwhorc5_qE1udneU/pub?gid=0&single=true&output=csv";
         const N8N_ACTION_WEBHOOK_URL = "https://peacelily.app.n8n.cloud/webhook/triage-message";
 
-        fetch(SHEET_CSV_URL)
-            .then(response => response.text())
-            .then(csvText => {
-                Papa.parse(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    transformHeader: function(header) {
-                        return header.trim();
-                    },
-                    complete: function(results) {
-                        document.getElementById('loading').style.display = 'none';
-                        const data = results.data;
-                        const container = document.getElementById('requests-container');
-                        
-                        const pendingRows = data.filter(row => row.status && row.status.trim() === 'awaiting_approval');
+        let allRowsData = [];
+        let currentActiveTab = 'pending';
 
-                        if (pendingRows.length === 0) {
-                            container.innerHTML = `<div class="p-6 bg-green-50 text-green-700 rounded-xl border border-green-200 font-medium text-center">🎉 No pending requests to review! All caught up.</div>`;
-                            return;
+        function fetchSheetData() {
+            fetch(SHEET_CSV_URL + '&cacheBust=' + new Date().getTime())
+                .then(response => response.text())
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        transformHeader: h => h.trim(),
+                        complete: function(results) {
+                            document.getElementById('loading').style.display = 'none';
+                            allRowsData = results.data;
+                            updateDashboardCounts();
+                            renderCurrentTab();
+                            renderRecentActivity();
                         }
-
-                        pendingRows.forEach(row => {
-                            if (!row['Order Number']) return;
-                            
-                            const card = document.createElement('div');
-                            card.className = "border border-gray-200 p-6 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200";
-                            
-                            const messageId = row['Message ID'] || '';
-                            const customerEmail = row['Customer Email'] || '';
-                            const draftReply = row['Draft Reply'] || '';
-
-                            card.innerHTML = `
-                                <div class="flex justify-between items-center mb-3">
-                                    <h3 class="text-base font-bold text-gray-800">📦 Order ID: <span class="text-blue-600">${row['Order Number']}</span> | Customer: ${row['Customer Name']}</h3>
-                                    <span class="px-3 py-1 bg-amber-50 text-amber-800 text-xs font-bold rounded-full border border-amber-200">Urgency: ${row['Urgency']}</span>
-                                </div>
-                                <p class="text-xs text-gray-500 mb-3"><strong>Email:</strong> ${customerEmail} | <strong>Category:</strong> ${row['Category']} | <strong>Message ID:</strong> ${messageId}</p>
-                                <div class="bg-gray-50 p-3.5 rounded-lg border border-gray-100 mb-3 text-sm text-gray-700"><strong>Summary:</strong> ${row['Summary']}</div>
-                                <div class="bg-blue-50/60 p-3.5 rounded-lg border border-blue-100 mb-4 text-sm text-blue-900"><strong>AI Draft Reply:</strong><br>${draftReply}</div>
-                                
-                                <div class="mb-4 flex items-center space-x-3">
-                                    <label class="text-xs font-semibold text-gray-700">Approver Name:</label>
-                                    <select class="approver-select border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                                        <option value="Manoj Aberathna">Manoj Aberathna</option>
-                                        <option value="Admin Support">Admin Support Lead</option>
-                                        <option value="Peace Lily Bot">Peace Lily System Bot</option>
-                                    </select>
-                                </div>
-
-                                <div class="flex space-x-3">
-                                    <button class="approve-btn bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 shadow-sm transition-colors flex items-center space-x-2"><span>✅ Approve & Send</span></button>
-                                    <button class="reject-btn bg-rose-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-rose-700 shadow-sm transition-colors flex items-center space-x-2"><span>❌ Reject</span></button>
-                                </div>
-                            `;
-
-                            const approverSelect = card.querySelector('.approver-select');
-                            const approveBtn = card.querySelector('.approve-btn');
-                            approveBtn.addEventListener('click', () => {
-                                const selectedApprover = approverSelect.value;
-                                sendAction(messageId, customerEmail, draftReply, 'approved', selectedApprover);
-                            });
-
-                            const rejectBtn = card.querySelector('.reject-btn');
-                            rejectBtn.addEventListener('click', () => {
-                                const selectedApprover = approverSelect.value;
-                                sendAction(messageId, '', '', 'rejected', selectedApprover);
-                            });
-
-                            container.appendChild(card);
-                        });
-                    }
+                    });
+                })
+                .catch(err => {
+                    document.getElementById('loading').innerHTML = `<div class="p-4 bg-rose-50 text-rose-700 rounded-xl border border-rose-200">Error connecting to sheet: ${err}</div>`;
                 });
-            })
-            .catch(err => {
-                document.getElementById('loading').innerHTML = `<div class="p-4 bg-rose-50 text-rose-700 rounded-xl border border-rose-200">Error loading data: ${err}</div>`;
+        }
+
+        function updateDashboardCounts() {
+            const pending = allRowsData.filter(r => r.status && r.status.trim() === 'awaiting_approval').length;
+            const approved = allRowsData.filter(r => r.status && r.status.trim() === 'approved').length;
+            const rejected = allRowsData.filter(r => r.status && r.status.trim() === 'rejected').length;
+
+            document.getElementById('stat-pending').innerText = pending;
+            document.getElementById('stat-approved').innerText = approved;
+            document.getElementById('stat-rejected').innerText = rejected;
+            document.getElementById('notif-badge').innerText = pending;
+        }
+
+        function switchTab(tabName) {
+            currentActiveTab = tabName;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-emerald-600', 'text-white', 'shadow-sm');
+                btn.classList.add('bg-gray-200', 'text-gray-600');
             });
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.classList.remove('bg-gray-200', 'text-gray-600');
+            activeBtn.classList.add('bg-emerald-600', 'text-white', 'shadow-sm');
+            renderCurrentTab();
+        }
+
+        function renderCurrentTab() {
+            const container = document.getElementById('requests-container');
+            container.innerHTML = '';
+
+            const searchQuery = document.getElementById('search-box').value.toLowerCase();
+
+            let filtered = [];
+            if (currentActiveTab === 'pending') {
+                filtered = allRowsData.filter(r => r.status && r.status.trim() === 'awaiting_approval');
+            } else if (currentActiveTab === 'approved') {
+                filtered = allRowsData.filter(r => r.status && r.status.trim() === 'approved');
+            } else if (currentActiveTab === 'rejected') {
+                filtered = allRowsData.filter(r => r.status && r.status.trim() === 'rejected');
+            }
+
+            // Apply Search Filtering across Name, Order ID, Message ID, or Email
+            if (searchQuery.trim() !== '') {
+                filtered = filtered.filter(r => {
+                    const name = (r['Customer Name'] || '').toLowerCase();
+                    const order = (r['Order Number'] || '').toLowerCase();
+                    const msgId = (r['Message ID'] || '').toLowerCase();
+                    const email = (r['Customer Email'] || '').toLowerCase();
+                    return name.includes(searchQuery) || order.includes(searchQuery) || msgId.includes(searchQuery) || email.includes(searchQuery);
+                });
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="p-10 glass-card rounded-2xl shadow-sm border border-emerald-100 text-center text-gray-500 font-medium">🎉 No records found matching your criteria.</div>`;
+                return;
+            }
+
+            filtered.forEach(row => {
+                if (!row['Order Number']) return;
+                const card = document.createElement('div');
+                card.className = "glass-card p-6 rounded-2xl shadow-sm border border-emerald-100 transition-all-custom hover:shadow-md";
+                
+                const messageId = row['Message ID'] || '';
+                const customerEmail = row['Customer Email'] || '';
+                const draftReply = row['Draft Reply'] || '';
+                const status = row['status'] ? row['status'].trim() : '';
+
+                let badgeColor = 'bg-amber-50 text-amber-800 border-amber-200';
+                if(status === 'approved') badgeColor = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+                if(status === 'rejected') badgeColor = 'bg-rose-50 text-rose-800 border-rose-200';
+
+                let actionSection = '';
+                if(status === 'awaiting_approval') {
+                    actionSection = `
+                        <div class="mt-5 pt-4 border-t border-gray-100 flex space-x-3">
+                            <button class="approve-btn bg-emerald-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 shadow-sm transition-all-custom flex items-center space-x-2 transform active:scale-95">
+                                <i class="fa-solid fa-check"></i><span>Approve & Send</span>
+                            </button>
+                            <button class="reject-btn bg-rose-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-rose-700 shadow-sm transition-all-custom flex items-center space-x-2 transform active:scale-95">
+                                <i class="fa-solid fa-xmark"></i><span>Reject</span>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    actionSection = `
+                        <div class="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500 flex justify-between">
+                            <span>Action Date: <strong>${row['action_date'] || '-'} ${row['action_time'] || ''}</strong></span>
+                            <span>Processed by: <strong>${row['approved_by'] || '-'}</strong></span>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-base font-extrabold text-gray-800 flex items-center">
+                            <i class="fa-solid fa-box text-emerald-600 mr-2"></i> Order ID: <span class="text-emerald-700 ml-1">${row['Order Number']}</span> <span class="text-gray-400 mx-2">|</span> Customer: ${row['Customer Name']}
+                        </h3>
+                        <span class="px-3 py-1 text-xs font-bold rounded-full border ${badgeColor}">${status.toUpperCase()}</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3 font-medium"><strong>Email:</strong> ${customerEmail} <span class="text-gray-300 mx-1">|</span> <strong>Category:</strong> ${row['Category']} <span class="text-gray-300 mx-1">|</span> <strong>Message ID:</strong> ${messageId}</p>
+                    <div class="bg-gray-50/80 p-3.5 rounded-xl border border-gray-100 mb-3 text-sm text-gray-700"><strong>Summary:</strong> ${row['Summary']}</div>
+                    <div class="bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-100/60 text-sm text-emerald-950"><strong>AI Draft Reply:</strong><br>${draftReply}</div>
+                    ${actionSection}
+                `;
+
+                if(status === 'awaiting_approval') {
+                    const approveBtn = card.querySelector('.approve-btn');
+                    approveBtn.addEventListener('click', () => {
+                        const selectedApprover = document.getElementById('global-approver').value;
+                        sendAction(messageId, customerEmail, draftReply, 'approved', selectedApprover);
+                    });
+
+                    const rejectBtn = card.querySelector('.reject-btn');
+                    rejectBtn.addEventListener('click', () => {
+                        const selectedApprover = document.getElementById('global-approver').value;
+                        sendAction(messageId, '', '', 'rejected', selectedApprover);
+                    });
+                }
+
+                container.appendChild(card);
+            });
+        }
+
+        function renderRecentActivity() {
+            const tbody = document.getElementById('recent-activity-body');
+            tbody.innerHTML = '';
+
+            const completed = allRowsData.filter(r => r.status && (r.status.trim() === 'approved' || r.status.trim() === 'rejected'));
+            const last5 = completed.reverse().slice(0, 5);
+
+            if(last5.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">No completed actions recorded yet.</td></tr>`;
+                return;
+            }
+
+            last5.forEach(row => {
+                const status = row['status'].trim();
+                const badge = status === 'approved' ? '<span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-md">APPROVED</span>' : '<span class="px-2.5 py-1 bg-rose-100 text-rose-800 text-[10px] font-extrabold rounded-md">REJECTED</span>';
+                
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-emerald-50/30 transition-all-custom";
+                tr.innerHTML = `
+                    <td class="p-3.5 font-semibold text-emerald-700">${row['Order Number'] || '-'}</td>
+                    <td class="p-3.5 text-gray-700 font-medium">${row['Customer Name'] || '-'}</td>
+                    <td class="p-3.5">${badge}</td>
+                    <td class="p-3.5 text-gray-500 text-xs">${row['action_date'] || ''} ${row['action_time'] || ''}</td>
+                    <td class="p-3.5 font-medium text-gray-700 text-xs">${row['approved_by'] || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
 
         function sendAction(messageId, email, reply, actionType, approverName) {
             const now = new Date();
-            const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-            const timeStr = now.toTimeString().split(' ')[0]; // HH:MM:SS
+            const dateStr = now.toISOString().split('T')[0];
+            const timeStr = now.toTimeString().split(' ')[0];
 
             const payload = {
                 message_id: messageId,
@@ -131,14 +340,18 @@
             })
             .then(res => {
                 if(res.ok) {
-                    alert(`Action (${actionType}) successfully recorded!`);
-                    location.reload();
+                    alert(`Action (${actionType}) successfully recorded, email dispatched & sheet synchronized!`);
+                    fetchSheetData(); 
                 } else {
                     alert('Webhook trigger failed.');
                 }
             })
             .catch(err => alert('Error: ' + err));
         }
+
+        // Initial Load & Auto-refresh every 15 seconds
+        fetchSheetData();
+        setInterval(fetchSheetData, 15000);
     </script>
 </body>
 </html>
